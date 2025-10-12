@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gene to Music Synthesizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .note {
+            transition: background-color 0.2s ease, color 0.2s ease;
+        }
+        .note.playing {
+            background-color: #4f46e5;
+            color: white;
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 flex items-center justify-center min-h-screen p-4">
+
+    <div class="bg-white w-full max-w-2xl mx-auto p-6 sm:p-8 rounded-2xl shadow-lg space-y-6">
+        <!-- Header Section -->
+        <div class="text-center">
+            <h1 class="text-3xl sm:text-4xl font-bold text-slate-900">Gene to Music</h1>
+            <p class="text-slate-500 mt-2">Transform DNA codons into complex musical melodies.</p>
+        </div>
+
+        <!-- Input Section -->
+        <div>
+            <label for="gene-sequence" class="block text-sm font-medium text-slate-700 mb-2">Enter DNA Sequence:</label>
+            <textarea id="gene-sequence" rows="4" class="w-full p-4 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out font-mono text-sm" placeholder="e.g., ATGCCGCTAGTT..."></textarea>
+        </div>
+        
+        <!-- Musical Scale Controls -->
+        <div class="bg-slate-50 border border-slate-200 p-4 rounded-lg">
+             <h4 class="font-semibold mb-3 text-slate-800">Musical Filter Options</h4>
+             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                    <label for="scale-type" class="block text-sm font-medium text-slate-700 mb-2">Scale Type</label>
+                    <select id="scale-type" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500">
+                        <option value="chromatic">Chromatic (All Notes)</option>
+                        <option value="major">Major</option>
+                        <option value="minor">Minor</option>
+                        <option value="pentatonic_major">Pentatonic Major</option>
+                        <option value="pentatonic_minor">Pentatonic Minor</option>
+                        <option value="blues">Blues</option>
+                        <option value="dorian">Dorian</option>
+                        <option value="phrygian">Phrygian</option>
+                        <option value="whole_tone">Whole Tone</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="root-note" class="block text-sm font-medium text-slate-700 mb-2">Root Note</label>
+                    <select id="root-note" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500" disabled>
+                        <option>C</option>
+                        <option>C#</option>
+                        <option>D</option>
+                        <option>D#</option>
+                        <option>E</option>
+                        <option>F</option>
+                        <option>F#</option>
+                        <option>G</option>
+                        <option>G#</option>
+                        <option>A</option>
+                        <option>A#</option>
+                        <option>B</option>
+                    </select>
+                </div>
+             </div>
+        </div>
+
+        <!-- Control Buttons -->
+        <div class="flex flex-col sm:flex-row gap-4">
+            <button id="transform-btn" class="w-full bg-indigo-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-transform transform active:scale-95 shadow-md">
+                Transform & Filter
+            </button>
+            <button id="play-btn" class="w-full bg-emerald-500 text-white font-semibold py-3 px-6 rounded-lg hover:bg-emerald-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-transform transform active:scale-95 shadow-md disabled:bg-slate-400 disabled:cursor-not-allowed" disabled>
+                Play
+            </button>
+            <button id="stop-btn" class="w-full bg-red-500 text-white font-semibold py-3 px-6 rounded-lg hover:bg-red-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-transform transform active:scale-95 shadow-md disabled:bg-slate-400 disabled:cursor-not-allowed" disabled>
+                Stop
+            </button>
+        </div>
+        
+        <!-- Status Message -->
+        <div id="status" class="text-center text-slate-500 h-5"></div>
+
+        <!-- Output Section -->
+        <div>
+            <h3 class="text-lg font-semibold text-slate-800 mb-2">Generated Musical Notes:</h3>
+            <div id="notes-output" class="w-full h-48 bg-slate-50 border border-slate-200 rounded-lg p-4 overflow-y-auto text-center flex flex-wrap gap-2 justify-center content-start">
+                <span class="text-slate-400">Notes will appear here...</span>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const geneSequenceInput = document.getElementById('gene-sequence');
+            const transformBtn = document.getElementById('transform-btn');
+            const playBtn = document.getElementById('play-btn');
+            const stopBtn = document.getElementById('stop-btn');
+            const notesOutput = document.getElementById('notes-output');
+            const statusDiv = document.getElementById('status');
+            const scaleTypeSelect = document.getElementById('scale-type');
+            const rootNoteSelect = document.getElementById('root-note');
+
+            let synth;
+            let noteSequence = [];
+            let transportPart;
+            
+            const codonNoteMap = {
+                'GCT': 'C4', 'GCC': 'C4', 'GCA': 'C4', 'GCG': 'C4', 'CGT': 'C#4', 'CGC': 'C#4', 'CGA': 'C#4', 'CGG': 'C#4', 'AGA': 'C#4', 'AGG': 'C#4', 'AAT': 'D4', 'AAC': 'D4', 'GAT': 'D#4', 'GAC': 'D#4', 'TGT': 'E4', 'TGC': 'E4', 'GAA': 'F4', 'GAG': 'F4', 'CAA': 'F#4', 'CAG': 'F#4', 'GGT': 'G4', 'GGC': 'G4', 'GGA': 'G4', 'GGG': 'G4', 'CAT': 'G#4', 'CAC': 'G#4', 'ATT': 'A4', 'ATC': 'A4', 'ATA': 'A4', 'TTA': 'A#4', 'TTG': 'A#4', 'CTT': 'A#4', 'CTC': 'A#4', 'CTA': 'A#4', 'CTG': 'A#4', 'AAA': 'B4', 'AAG': 'B4', 'ATG': 'C5', 'TTT': 'C#5', 'TTC': 'C#5', 'CCT': 'D5', 'CCC': 'D5', 'CCA': 'D5', 'CCG': 'D5', 'TCT': 'D#5', 'TCC': 'D#5', 'TCA': 'D#5', 'TCG': 'D#5', 'AGT': 'D#5', 'AGC': 'D#5', 'ACT': 'E5', 'ACC': 'E5', 'ACA': 'E5', 'ACG': 'E5', 'TGG': 'F5', 'TAT': 'F#5', 'TAC': 'F#5', 'GTT': 'G5', 'GTC': 'G5', 'GTA': 'G5', 'GTG': 'G5', 'TAA': null, 'TAG': null, 'TGA': null
+            };
+
+            const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            const scaleIntervals = {
+                major: [0, 2, 4, 5, 7, 9, 11],
+                minor: [0, 2, 3, 5, 7, 8, 10],
+                pentatonic_major: [0, 2, 4, 7, 9],
+                pentatonic_minor: [0, 3, 5, 7, 10],
+                blues: [0, 3, 5, 6, 7, 10],
+                dorian: [0, 2, 3, 5, 7, 9, 10],
+                phrygian: [0, 1, 3, 5, 7, 8, 10],
+                whole_tone: [0, 2, 4, 6, 8, 10]
+            };
+
+            scaleTypeSelect.addEventListener('change', () => {
+                rootNoteSelect.disabled = scaleTypeSelect.value === 'chromatic';
+            });
+
+            function getScaleNotes(root, type) {
+                const rootIndex = notes.indexOf(root);
+                if (rootIndex === -1) return [];
+                const intervals = scaleIntervals[type];
+                return intervals.map(interval => notes[(rootIndex + interval) % 12]);
+            }
+
+            function initializeSynth() {
+                if (!synth) {
+                    synth = new Tone.Synth({ oscillator: { type: 'fmsine' }, envelope: { attack: 0.1, decay: 0.2, sustain: 0.5, release: 1 } }).toDestination();
+                }
+            }
+            
+            transformBtn.addEventListener('click', () => {
+                const sequence = geneSequenceInput.value;
+                if (!sequence) {
+                    statusDiv.textContent = "Please enter a DNA sequence.";
+                    return;
+                }
+                
+                const cleanedSequence = sequence.replace(/[^ATCGatcg]/g, '').toUpperCase();
+                const codons = [];
+                for (let i = 0; i <= cleanedSequence.length - 3; i += 3) {
+                    codons.push(cleanedSequence.substring(i, i + 3));
+                }
+                
+                const allNotes = codons.map(codon => codonNoteMap[codon]).filter(Boolean);
+
+                if (allNotes.length === 0) {
+                    notesOutput.innerHTML = '<span class="text-slate-400">No valid codons found.</span>';
+                    playBtn.disabled = true;
+                    statusDiv.textContent = "Transformation failed.";
+                    return;
+                }
+                
+                const scaleType = scaleTypeSelect.value;
+                let statusMsg = `Generated ${allNotes.length} notes.`;
+
+                if (scaleType === 'chromatic') {
+                    noteSequence = allNotes;
+                } else {
+                    const rootNote = rootNoteSelect.value;
+                    const allowedNotes = getScaleNotes(rootNote, scaleType);
+                    noteSequence = allNotes.filter(note => allowedNotes.includes(note.slice(0, -1))); // Compare without octave
+                    statusMsg += ` Filtered to ${noteSequence.length} in ${rootNote} ${scaleType.replace('_', ' ')}.`;
+                }
+
+                if (noteSequence.length === 0) {
+                     notesOutput.innerHTML = `<span class="text-slate-400">No notes from the sequence fit the selected scale.</span>`;
+                     playBtn.disabled = true;
+                } else {
+                    displayNotes(noteSequence);
+                    playBtn.disabled = false;
+                }
+                statusDiv.textContent = statusMsg;
+            });
+
+            function displayNotes(notes) {
+                notesOutput.innerHTML = '';
+                notes.forEach((note, index) => {
+                    const noteEl = document.createElement('div');
+                    noteEl.textContent = note;
+                    noteEl.id = `note-${index}`;
+                    noteEl.className = 'note bg-slate-200 text-slate-700 font-mono py-1 px-3 rounded-md text-sm';
+                    notesOutput.appendChild(noteEl);
+                });
+            }
+
+            playBtn.addEventListener('click', async () => {
+                if (noteSequence.length === 0) return;
+
+                await Tone.start();
+                initializeSynth();
+                
+                if (Tone.Transport.state === 'started') {
+                    Tone.Transport.stop();
+                    Tone.Transport.cancel();
+                }
+
+                let noteEvents = [];
+                noteSequence.forEach((note, index) => {
+                    noteEvents.push({ time: `${index * 0.4}`, note: note, duration: '8n', index: index });
+                });
+
+                transportPart = new Tone.Part((time, value) => {
+                    synth.triggerAttackRelease(value.note, value.duration, time);
+                    Tone.Draw.schedule(() => {
+                        highlightNote(value.index);
+                    }, time);
+                }, noteEvents).start(0);
+
+                const totalDuration = noteSequence.length * 0.4;
+                Tone.Transport.scheduleOnce((time) => {
+                     Tone.Draw.schedule(() => {
+                        statusDiv.textContent = "Playback finished.";
+                        playBtn.disabled = false;
+                        stopBtn.disabled = true;
+                        clearHighlights();
+                    }, time);
+                }, totalDuration);
+                
+                Tone.Transport.start();
+
+                statusDiv.textContent = 'Playing...';
+                playBtn.disabled = true;
+                stopBtn.disabled = false;
+            });
+
+            stopBtn.addEventListener('click', () => {
+                if (Tone.Transport.state === 'started') {
+                    Tone.Transport.stop();
+                    Tone.Transport.cancel();
+                    if (transportPart) {
+                        transportPart.dispose();
+                    }
+                    clearHighlights();
+                    statusDiv.textContent = 'Playback stopped.';
+                    playBtn.disabled = false;
+                    stopBtn.disabled = true;
+                }
+            });
+
+            function highlightNote(index) {
+                clearHighlights();
+                const noteEl = document.getElementById(`note-${index}`);
+                if (noteEl) {
+                    noteEl.classList.add('playing');
+                }
+            }
+
+            function clearHighlights() {
+                document.querySelectorAll('.note.playing').forEach(el => {
+                    el.classList.remove('playing');
+                });
+            }
+        });
+    </script>
+</body>
+</html>
+
+

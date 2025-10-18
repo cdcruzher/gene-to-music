@@ -6,6 +6,8 @@
     <title>Gene to Music Synthesizer</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <!-- jsPDF library for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap" rel="stylesheet">
     <style>
@@ -38,6 +40,19 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
+        /* Style for the volume slider */
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #4f46e5;
+            cursor: pointer;
+            border-radius: 50%;
+        }
+        #progress-bar {
+            transition: width 0.1s linear;
+        }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 flex items-center justify-center min-h-screen p-4">
@@ -46,18 +61,25 @@
         <!-- Header Section -->
         <div class="text-center">
             <h1 class="text-3xl sm:text-4xl font-bold text-slate-900">Gene to Music</h1>
-            <p class="text-slate-500 mt-2">Transform DNA codons into complex melodies.</p>
+            <p class="text-slate-500 mt-2">Transform DNA codons into musical pieces with rhythm.</p>
+        </div>
+        
+        <!-- User Name Input -->
+        <div>
+            <label for="user-name" class="block text-sm font-medium text-slate-700 mb-2">Your Name (for the PDF report):</label>
+            <input type="text" id="user-name" class="w-full p-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500" placeholder="Enter your name">
         </div>
 
         <!-- Manual Input Section -->
         <div>
-            <label for="gene-sequence" class="block text-sm font-medium text-slate-700 mb-2">Enter a DNA sequence here:</label>
-            <textarea id="gene-sequence" rows="5" class="w-full p-4 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out font-mono text-sm" placeholder="e.g., ATGCCGCTAGTT..."></textarea>
+            <label for="gene-sequence" class="block text-sm font-medium text-slate-700 mb-2">Enter a DNA sequence here (example: Human FOXM1 Gene):</label>
+            <textarea id="gene-sequence" rows="5" class="w-full p-4 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition duration-150 ease-in-out font-mono text-sm" placeholder="e.g., ATGCCGCTAGTT...">ATGGCGTCGGCCGCGGGCTCGGCGCTGCTGGCCCGGCTCGGCCCCAGCAGCTCGGGGCCGCCCTCTCCGCACCCCCGGAGCCGCCTCCGCGCCGCCCGGCGGAGGCGCGGGAGCGGCGGCGGCGGCGGCGGCCGGCGGCGGCTCAGGTCCGCGGGCGGCGGCGCGGGCCTCTTCCTCCACCACGTCGTCCGCGTCCCCGCCGCCGGCTCCGGCTCCTCCTACCACTTCACCTTCCCCGGCCTCCTCCCCGCCGCCGGGCCGCCCGGCTGCGGGCGGCGGCCGCCGCCGCCTCCCCCTGCCGCCGGCCGCCCGGCTGCGGGCGGCGGCCGCCGCCGCCTCCCCCTGCCGCCGGCCGCCCGGCTGCGGGCGGCGGCCGCCGCCGCCTCCCCCTGCCGCCGGCCTCCTCCCCGCCGCCGGGCCGCCCGGCTGCGGGCGGCGGCCGCCGCCGCCTCCCCCTG</textarea>
+            <p class="text-xs text-slate-500 mt-2 text-center">Or, <a href="https://www.ncbi.nlm.nih.gov/nuccore/" target="_blank" class="text-indigo-600 hover:underline">find a different sequence at NCBI's Nucleotide database</a>.</p>
         </div>
         
         <!-- Musical Scale Controls -->
-        <div class="bg-slate-50 border border-slate-200 p-4 rounded-lg">
-             <h4 class="font-semibold mb-3 text-slate-800">Musical Filter Options</h4>
+        <div class="bg-slate-50 border border-slate-200 p-4 rounded-lg space-y-4">
+             <h4 class="font-semibold text-slate-800">Musical Filter Options</h4>
              <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                     <label for="scale-type" class="block text-sm font-medium text-slate-700 mb-2">Scale Type</label>
@@ -98,6 +120,10 @@
                     </select>
                 </div>
              </div>
+             <div>
+                <label for="drum-volume" class="block text-sm font-medium text-slate-700 mb-2">Percussion Volume</label>
+                <input type="range" id="drum-volume" min="-30" max="10" value="-10" class="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer">
+             </div>
         </div>
 
         <!-- Control Buttons -->
@@ -113,7 +139,24 @@
             </button>
         </div>
         
-        <!-- Status Message -->
+        <!-- Download Buttons -->
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+             <button id="download-audio-btn" class="w-full bg-sky-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-sky-700 disabled:bg-slate-400 disabled:cursor-not-allowed" disabled>
+                Download WEBM Audio
+            </button>
+            <button id="download-pdf-btn" class="w-full bg-orange-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-orange-700 disabled:bg-slate-400 disabled:cursor-not-allowed" disabled>
+                Download PDF Report
+            </button>
+            <button id="convert-audio-btn" class="w-full bg-slate-600 text-white font-semibold py-3 px-6 rounded-lg hover:bg-slate-700 disabled:bg-slate-400 disabled:cursor-not-allowed" title="Convert your downloaded file to MP3 or other formats">
+                Convert to MP3 (external)
+            </button>
+        </div>
+        
+        <!-- Progress Bar & Status -->
+        <div id="progress-container" class="hidden w-full bg-slate-200 rounded-full h-2.5 mt-4">
+            <div id="progress-bar" class="bg-indigo-600 h-2.5 rounded-full" style="width: 0%"></div>
+        </div>
+        <div id="progress-text" class="text-center text-sm text-slate-500 h-5"></div>
         <div id="status" class="text-center text-slate-500 h-5"></div>
 
         <!-- Output Section -->
@@ -132,6 +175,19 @@
             </div>
         </div>
     </div>
+    
+    <!-- Modal for conversion confirmation -->
+    <div id="convert-modal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+        <div class="bg-white rounded-lg p-6 max-w-sm w-full shadow-xl">
+            <h3 class="text-lg font-bold text-slate-900">Confirmation</h3>
+            <p class="mt-2 text-sm text-slate-600">Before you continue, make sure you have saved the <strong>gene_music.webm</strong> file to your computer. Do you want to open the conversion site now?</p>
+            <div class="mt-6 flex justify-end space-x-3">
+                <button id="modal-cancel-btn" class="px-4 py-2 bg-slate-200 text-slate-800 rounded-md hover:bg-slate-300">Cancel</button>
+                <button id="modal-confirm-btn" class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">Continue</button>
+            </div>
+        </div>
+    </div>
+
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -139,17 +195,31 @@
             const transformBtn = document.getElementById('transform-btn');
             const playBtn = document.getElementById('play-btn');
             const stopBtn = document.getElementById('stop-btn');
+            const downloadAudioBtn = document.getElementById('download-audio-btn');
+            const downloadPdfBtn = document.getElementById('download-pdf-btn');
+            const convertAudioBtn = document.getElementById('convert-audio-btn');
             const notesOutput = document.getElementById('notes-output');
             const aminoAcidOutput = document.getElementById('amino-acid-output');
             const statusDiv = document.getElementById('status');
             const scaleTypeSelect = document.getElementById('scale-type');
             const rootNoteSelect = document.getElementById('root-note');
             const genreSelect = document.getElementById('music-genre');
+            const drumVolumeSlider = document.getElementById('drum-volume');
+            const progressContainer = document.getElementById('progress-container');
+            const progressBar = document.getElementById('progress-bar');
+            const progressText = document.getElementById('progress-text');
+            const convertModal = document.getElementById('convert-modal');
+            const modalCancelBtn = document.getElementById('modal-cancel-btn');
+            const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+            const userNameInput = document.getElementById('user-name');
 
-            let synth;
+            let synth, kick, snare, hihat;
             let noteSequence = [];
             let aminoAcidSequence = [];
-            let transportPart;
+            let melodyPart, drumLoop;
+            let drumVolume = new Tone.Volume(-10).toDestination();
+            
+            const { jsPDF } = window.jspdf;
 
             const codonNoteMap = {
                 'GCT': 'C4', 'GCC': 'C4', 'GCA': 'C4', 'GCG': 'C4', 'CGT': 'C#4', 'CGC': 'C#4', 'CGA': 'C#4', 'CGG': 'C#4', 'AGA': 'C#4', 'AGG': 'C#4', 'AAT': 'D4', 'AAC': 'D4', 'GAT': 'D#4', 'GAC': 'D#4', 'TGT': 'E4', 'TGC': 'E4', 'GAA': 'F4', 'GAG': 'F4', 'CAA': 'F#4', 'CAG': 'F#4', 'GGT': 'G4', 'GGC': 'G4', 'GGA': 'G4', 'GGG': 'G4', 'CAT': 'G#4', 'CAC': 'G#4', 'ATT': 'A4', 'ATC': 'A4', 'ATA': 'A4', 'TTA': 'A#4', 'TTG': 'A#4', 'CTT': 'A#4', 'CTC': 'A#4', 'CTA': 'A#4', 'CTG': 'A#4', 'AAA': 'B4', 'AAG': 'B4', 'ATG': 'C5', 'TTT': 'C#5', 'TTC': 'C#5', 'CCT': 'D5', 'CCC': 'D5', 'CCA': 'D5', 'CCG': 'D5', 'TCT': 'D#5', 'TCC': 'D#5', 'TCA': 'D#5', 'TCG': 'D#5', 'AGT': 'D#5', 'AGC': 'D#5', 'ACT': 'E5', 'ACC': 'E5', 'ACA': 'E5', 'ACG': 'E5', 'TGG': 'F5', 'TAT': 'F#5', 'TAC': 'F#5', 'GTT': 'G5', 'GTC': 'G5', 'GTA': 'G5', 'GTG': 'G5', 'TAA': null, 'TAG': null, 'TGA': null
@@ -174,46 +244,105 @@
                 locrian: [0, 1, 3, 5, 6, 8, 10],
                 whole_tone: [0, 2, 4, 6, 8, 10]
             };
-
+            
             const genreStyles = {
                 'default': {
                     rhythm: ['8n'],
+                    drumPattern: null,
                     synthOptions: { oscillator: { type: 'fmsine' }, envelope: { attack: 0.1, decay: 0.2, sustain: 0.5, release: 1 } }
                 },
                 'classical': {
-                    rhythm: ['4n', '8n', '8n'], // Waltz Feel
+                    rhythm: ['4n', '8n', '8n'], 
+                    drumPattern: null,
                     synthOptions: { oscillator: { type: 'sine' }, envelope: { attack: 0.05, decay: 0.5, sustain: 0.4, release: 1.4 } }
                 },
                 'jazz': {
-                    rhythm: ['8n.', '16n'], // Swing Feel
+                    rhythm: ['8n.', '16n'],
+                    drumPattern: [
+                        { time: '0:0:0', note: 'C1' }, { time: '0:0:2', note: 'C2' }, 
+                        { time: '0:1:0', note: 'E2' }, { time: '0:1:2', note: 'C2' },
+                        { time: '0:2:0', note: 'C1' }, { time: '0:2:2', note: 'C2' },
+                        { time: '0:3:0', note: 'E2' }, { time: '0:3:2', note: 'C2' },
+                    ],
                     synthOptions: { oscillator: { type: 'fmtriangle', harmonicity: 1.2 }, envelope: { attack: 0.05, decay: 0.2, sustain: 0.3, release: 0.8 } }
                 },
-                'electronic': {
-                    rhythm: ['16n', '16n', '16n', '16n', '8n'], // Trance Feel
-                    synthOptions: { oscillator: { type: 'sawtooth' }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.2, release: 0.2 } }
-                },
                 'rock': {
-                    rhythm: ['8n', '8n', '4n'], // Rock Feel
-                    synthOptions: { oscillator: { type: 'fatsquare', detune: 5 }, envelope: { attack: 0.01, decay: 0.4, sustain: 0.1, release: 0.5 } }
+                    rhythm: ['8n', '8n', '4n'], 
+                    drumPattern: [
+                        { time: '0:0', note: 'C1' }, { time: '0:1', note: 'C2' },
+                        { time: '0:2', note: 'C1' }, { time: '0:3', note: 'C2' },
+                    ],
+                    synthOptions: {
+                        oscillator: { type: 'fatsawtooth', count: 3, detune: 30 },
+                        envelope: { attack: 0.01, decay: 0.4, sustain: 0.1, release: 0.5 }
+                    },
+                    distortion: 0.8 // Amount of distortion from 0 to 1
                 },
-                'funk': {
-                    rhythm: ['16n', null, '8n', '16n'], // Syncopated Feel (null is a rest)
+                 'funk': {
+                    rhythm: ['16n', null, '8n', '16n'], 
+                    drumPattern: [
+                        { time: '0:0', note: 'C1' }, { time: '0:0:2', note: 'E2' },
+                        { time: '0:1', note: 'C2' }, { time: '0:1:2', note: 'E2' },
+                        { time: '0:2', note: 'C1' }, { time: '0:2:2', note: 'E2' },
+                        { time: '0:3', note: 'C2' }, { time: '0:3:2', note: 'E2' },
+                    ],
                     synthOptions: { oscillator: { type: 'fatsawtooth', count: 2 }, envelope: { attack: 0.01, decay: 0.3, sustain: 0.1, release: 0.3 } }
                 },
                 'bossa_nova': {
-                    rhythm: ['8n', '16n', null, '16n', '8n'], // Classic Bossa Nova Feel
+                    rhythm: ['8n', '16n', null, '16n', '8n'], 
+                     drumPattern: [
+                        { time: '0:0', note: 'C1' }, { time: '0:0:3', note: 'E2' },
+                        { time: '0:1', note: 'C2' }, { time: '0:1:2', note: 'E2' },
+                        { time: '0:2', note: 'C1' }, { time: '0:2:2', note: 'E2' },
+                        { time: '0:3', note: 'C2' }, { time: '0:3:3', note: 'E2' },
+                    ],
                     synthOptions: { oscillator: { type: 'sine' }, envelope: { attack: 0.01, decay: 0.6, sustain: 0.1, release: 0.5 } }
                 },
+                'electronic': {
+                    rhythm: ['16n', '16n', '16n', '16n', '8n'], 
+                    drumPattern: [
+                        { time: '0:0', note: 'C1' }, { time: '0:1', note: 'C1' },
+                        { time: '0:2', note: 'C1' }, { time: '0:3', note: 'C1' },
+                    ],
+                    synthOptions: { oscillator: { type: 'sawtooth' }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.2, release: 0.2 } }
+                },
                 'ambient': {
-                    rhythm: ['1n'], // Long, sustained notes
+                    rhythm: ['1n'], 
+                    drumPattern: null,
                     synthOptions: { oscillator: { type: 'amsine', harmonicity: 1.5 }, envelope: { attack: 2, decay: 1, sustain: 0.8, release: 4 } }
                 },
                 'minimalist': {
-                    rhythm: ['8n'], // Simple, repetitive
+                    rhythm: ['8n'], 
+                    drumPattern: [{ time: '0:0', note: 'C1' }, { time: '0:2', note: 'C1' }],
                     synthOptions: { oscillator: { type: 'pulse', width: 0.7 }, envelope: { attack: 0.01, decay: 0.1, sustain: 0.1, release: 0.1 } }
                 }
             };
-
+            
+            function initializeSynths() {
+                if (!kick) {
+                    kick = new Tone.MembraneSynth({
+                        pitchDecay: 0.05, octaves: 10, oscillator: { type: 'sine' },
+                        envelope: { attack: 0.001, decay: 0.4, sustain: 0.01, release: 1.4, attackCurve: 'exponential' }
+                    }).connect(drumVolume);
+                }
+                if (!snare) {
+                     snare = new Tone.NoiseSynth({
+                        noise: { type: 'white' },
+                        envelope: { attack: 0.005, decay: 0.1, sustain: 0 }
+                    }).connect(drumVolume);
+                }
+                 if (!hihat) {
+                     hihat = new Tone.NoiseSynth({
+                        noise: { type: 'brown' },
+                        envelope: { attack: 0.001, decay: 0.05, sustain: 0 }
+                    }).connect(drumVolume);
+                }
+            }
+            
+            drumVolumeSlider.addEventListener('input', (e) => {
+                drumVolume.volume.value = e.target.value;
+            });
+            
             scaleTypeSelect.addEventListener('change', () => {
                 rootNoteSelect.disabled = scaleTypeSelect.value === 'chromatic';
             });
@@ -221,6 +350,9 @@
             transformBtn.addEventListener('click', () => {
                 playBtn.disabled = true;
                 stopBtn.disabled = true;
+                downloadAudioBtn.disabled = true;
+                downloadPdfBtn.disabled = true;
+                convertAudioBtn.disabled = true;
 
                 const sequence = geneSequenceInput.value;
                 if (!sequence) {
@@ -273,6 +405,8 @@
                     displayNotes(noteSequence);
                     displayAminoAcids(aminoAcidSequence);
                     playBtn.disabled = false;
+                    downloadAudioBtn.disabled = false;
+                    downloadPdfBtn.disabled = false;
                 }
                 statusDiv.textContent = statusMsg;
             });
@@ -326,10 +460,10 @@
                 }
             }
 
-
             playBtn.addEventListener('click', async () => {
                  if (noteSequence.length === 0) return;
                 await Tone.start();
+                initializeSynths();
                 
                 if (Tone.Transport.state === 'started') {
                     Tone.Transport.stop();
@@ -340,12 +474,17 @@
 
                 const genre = genreSelect.value;
                 const style = genreStyles[genre];
-                synth = new Tone.Synth(style.synthOptions).toDestination();
 
+                if (style.distortion && style.distortion > 0) {
+                    const distortion = new Tone.Distortion(style.distortion).toDestination();
+                    synth = new Tone.Synth(style.synthOptions).connect(distortion);
+                } else {
+                    synth = new Tone.Synth(style.synthOptions).toDestination();
+                }
+
+                // Melody Part
                 const noteEvents = createRhythmicEvents(noteSequence, style.rhythm);
-                const totalDuration = noteEvents.length > 0 ? noteEvents[noteEvents.length - 1].time + Tone.Time(noteEvents[noteEvents.length - 1].duration).toSeconds() : 0;
-                
-                transportPart = new Tone.Part((time, value) => {
+                melodyPart = new Tone.Part((time, value) => {
                     synth.triggerAttackRelease(value.note, value.duration, time);
                     Tone.Draw.schedule(() => {
                         highlightNote(value.index);
@@ -353,12 +492,22 @@
                     }, time);
                 }, noteEvents).start(0);
 
+                // Drum Part
+                if (style.drumPattern) {
+                    drumLoop = new Tone.Part((time, value) => {
+                        if (value.note === 'C1') kick.triggerAttackRelease('C1', '8n', time);
+                        if (value.note === 'C2') snare.triggerAttackRelease('8n', time);
+                        if (value.note === 'E2') hihat.triggerAttackRelease('16n', time);
+                    }, style.drumPattern).start(0);
+                    drumLoop.loop = true;
+                    drumLoop.loopEnd = '1m'; // Loop every measure
+                }
+
+                const totalDuration = noteEvents.length > 0 ? noteEvents[noteEvents.length - 1].time + Tone.Time(noteEvents[noteEvents.length - 1].duration).toSeconds() : 0;
                 Tone.Transport.scheduleOnce((time) => {
                      Tone.Draw.schedule(() => {
                         statusDiv.textContent = "Playback finished.";
-                        playBtn.disabled = false;
-                        stopBtn.disabled = true;
-                        clearAllHighlights();
+                        stopPlayback();
                     }, time);
                 }, totalDuration);
 
@@ -366,19 +515,30 @@
                 statusDiv.textContent = 'Playing...';
                 playBtn.disabled = true;
                 stopBtn.disabled = false;
+                downloadAudioBtn.disabled = true;
+                downloadPdfBtn.disabled = true;
+                convertAudioBtn.disabled = true;
             });
             
              stopBtn.addEventListener('click', () => {
-                if (Tone.Transport.state === 'started') {
+                stopPlayback();
+                statusDiv.textContent = 'Playback stopped.';
+            });
+            
+            function stopPlayback() {
+                 if (Tone.Transport.state === 'started') {
                     Tone.Transport.stop();
                     Tone.Transport.cancel();
-                    if (transportPart) transportPart.dispose();
+                    if (melodyPart) melodyPart.dispose();
+                    if (drumLoop) drumLoop.dispose();
                     clearAllHighlights();
-                    statusDiv.textContent = 'Playback stopped.';
                     playBtn.disabled = false;
                     stopBtn.disabled = true;
+                    downloadAudioBtn.disabled = noteSequence.length === 0;
+                    downloadPdfBtn.disabled = noteSequence.length === 0;
+                    convertAudioBtn.disabled = true; // Keep disabled until new download
                 }
-            });
+            }
 
             function highlightNote(index) {
                 document.querySelectorAll('.note.playing').forEach(el => el.classList.remove('playing'));
@@ -403,7 +563,7 @@
                 let noteIdx = 0;
                 let loopIdx = 0;
 
-                while (noteIdx < notes.length && loopIdx < 10000) { // Safety break
+                while (noteIdx < notes.length && loopIdx < 20000) { 
                     const rhythmIdx = loopIdx % rhythmPattern.length;
                     const duration = rhythmPattern[rhythmIdx];
 
@@ -424,6 +584,305 @@
                 }
                 return events;
             }
+            
+            convertAudioBtn.addEventListener('click', () => {
+                convertModal.classList.remove('hidden');
+            });
+            
+            modalCancelBtn.addEventListener('click', () => {
+                convertModal.classList.add('hidden');
+            });
+
+            modalConfirmBtn.addEventListener('click', () => {
+                window.open('https://cloudconvert.com/webm-to-mp3', '_blank');
+                statusDiv.textContent = "Upload your downloaded file to convert it.";
+                convertModal.classList.add('hidden');
+            });
+            
+            downloadAudioBtn.addEventListener('click', async () => {
+                if (noteSequence.length === 0) return;
+
+                statusDiv.textContent = 'Starting audio render...';
+                progressContainer.classList.remove('hidden');
+                progressBar.style.width = '0%';
+                progressText.textContent = '0%';
+                downloadAudioBtn.disabled = true;
+                playBtn.disabled = true;
+                stopBtn.disabled = true;
+                convertAudioBtn.disabled = true;
+                
+                await new Promise(resolve => setTimeout(resolve, 50));
+
+                let progressInterval;
+
+                try {
+                    const recorder = new Tone.Recorder();
+                    
+                    const MAX_RENDER_NOTES = 400;
+                    const notesToRender = noteSequence.slice(0, MAX_RENDER_NOTES);
+                    const genre = genreSelect.value;
+                    const style = genreStyles[genre];
+                    const noteEvents = createRhythmicEvents(notesToRender, style.rhythm);
+                    const duration = noteEvents.length > 0 ? noteEvents[noteEvents.length - 1].time + Tone.Time(noteEvents[noteEvents.length - 1].duration).toSeconds() + 2 : 2;
+
+                    // Connect master output to recorder
+                    Tone.getDestination().connect(recorder);
+                    
+                    initializeSynths();
+                    
+                    // Re-create instruments for this render pass
+                    let renderSynth;
+                    if (style.distortion && style.distortion > 0) {
+                        const distortion = new Tone.Distortion(style.distortion).toDestination();
+                        renderSynth = new Tone.Synth(style.synthOptions).connect(distortion);
+                    } else {
+                        renderSynth = new Tone.Synth(style.synthOptions).toDestination();
+                    }
+
+                    const renderMelodyPart = new Tone.Part((time, value) => {
+                        renderSynth.triggerAttackRelease(value.note, value.duration, time);
+                    }, noteEvents).start(0);
+
+                    let renderDrumLoop;
+                    if (style.drumPattern) {
+                        renderDrumLoop = new Tone.Part((time, value) => {
+                            if (value.note === 'C1') kick.triggerAttackRelease('C1', '8n', time);
+                            if (value.note === 'C2') snare.triggerAttackRelease('8n', time);
+                            if (value.note === 'E2') hihat.triggerAttackRelease('16n', time);
+                        }, style.drumPattern).start(0);
+                        renderDrumLoop.loop = true;
+                        renderDrumLoop.loopEnd = '1m';
+                    }
+
+                    recorder.start();
+                    Tone.Transport.start();
+                    
+                    const startTime = Date.now();
+                    statusDiv.textContent = 'Rendering audio...';
+                    
+                    progressInterval = setInterval(() => {
+                        const elapsedTime = (Date.now() - startTime) / 1000;
+                        const percentage = Math.min(100, (elapsedTime / duration) * 100);
+                        progressBar.style.width = `${percentage}%`;
+                        progressText.textContent = `${Math.floor(percentage)}%`;
+                    }, 100);
+
+                    setTimeout(async () => {
+                        clearInterval(progressInterval);
+                        const recording = await recorder.stop();
+                        Tone.Transport.stop(true);
+                        
+                        // Clean up render instruments
+                        renderSynth.dispose();
+                        renderMelodyPart.dispose();
+                        if (renderDrumLoop) renderDrumLoop.dispose();
+
+                        const url = URL.createObjectURL(recording);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = 'gene_music.webm';
+                        a.click();
+                        URL.revokeObjectURL(url);
+                        
+                        statusDiv.textContent = 'WEBM audio downloaded.';
+                        progressText.textContent = 'Complete';
+                        
+                        downloadAudioBtn.disabled = false;
+                        playBtn.disabled = false;
+                        convertAudioBtn.disabled = false; // Enable convert button
+                        
+                        setTimeout(() => {
+                            progressContainer.classList.add('hidden');
+                            progressText.textContent = '';
+                        }, 3000);
+
+                    }, duration * 1000);
+
+                } catch (error) {
+                    if(progressInterval) clearInterval(progressInterval);
+                    statusDiv.textContent = 'Error rendering audio.';
+                    console.error("Audio recording failed:", error);
+                    downloadAudioBtn.disabled = false;
+                    playBtn.disabled = false;
+                    progressContainer.classList.add('hidden');
+                    progressText.textContent = '';
+                }
+            });
+
+            downloadPdfBtn.addEventListener('click', () => {
+                if (noteSequence.length === 0) return;
+
+                statusDiv.textContent = 'Generating PDF report...';
+
+                try {
+                    const doc = new jsPDF();
+                    let currentY = 20;
+                    const pageMargin = 20;
+                    const pageWidth = doc.internal.pageSize.getWidth();
+                    const usableWidth = pageWidth - (pageMargin * 2);
+
+                    const checkPageEnd = (heightNeeded) => {
+                        if (currentY + heightNeeded > doc.internal.pageSize.getHeight() - pageMargin) {
+                            doc.addPage();
+                            currentY = pageMargin;
+                        }
+                    };
+                    
+                    doc.setFontSize(22);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Gene to Music Report', pageWidth / 2, currentY, { align: 'center' });
+                    currentY += 15;
+                    
+                    const userName = userNameInput.value.trim() || 'Anonymous';
+                    const today = new Date();
+                    const dateStr = today.toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' });
+
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'normal');
+                    doc.text(`Created by: ${userName}`, pageMargin, currentY);
+                    doc.text(`Date: ${dateStr}`, pageWidth - pageMargin, currentY, { align: 'right' });
+                    currentY += 8;
+                    doc.text('Application by: Carlos David Cruz Hernandez', pageMargin, currentY);
+                    currentY += 20;
+
+                    doc.setFontSize(14);
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Settings', pageMargin, currentY);
+                    currentY += 8;
+                    
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'normal');
+                    const scaleText = scaleTypeSelect.options[scaleTypeSelect.selectedIndex].text;
+                    const rootNoteText = rootNoteSelect.disabled ? 'N/A' : rootNoteSelect.value;
+                    const genreText = genreSelect.options[genreSelect.selectedIndex].text;
+                    doc.text(`Scale: ${scaleText}`, pageMargin, currentY);
+                    doc.text(`Root Note: ${rootNoteText}`, pageMargin + 70, currentY);
+                    doc.text(`Genre: ${genreText}`, pageMargin + 140, currentY);
+                    currentY += 15;
+                    
+                    const addTable = (doc, startY) => {
+                        let y = startY;
+                        checkPageEnd(30);
+                        doc.setFontSize(14);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text('Codon to Music Conversion Table', pageMargin, y);
+                        y += 10;
+                        
+                        const tableHeaders = ['Codon', 'Amino Acid', 'Note'];
+                        const colWidths = [40, 60, 40];
+                        let x = pageMargin;
+
+                        const drawTableHeader = () => {
+                            doc.setFontSize(10);
+                            doc.setFont('helvetica', 'bold');
+                            x = pageMargin;
+                            tableHeaders.forEach((header, i) => {
+                                doc.text(header, x, y);
+                                x += colWidths[i];
+                            });
+                            y += 2;
+                            doc.setLineWidth(0.5);
+                            doc.line(pageMargin, y, pageWidth - pageMargin, y);
+                            y += 6;
+                        };
+
+                        drawTableHeader();
+                        
+                        // Build and sort the conversion data
+                        const conversionData = Object.keys(codonAminoAcidMap).map(codon => ({
+                            codon: codon,
+                            amino: codonAminoAcidMap[codon],
+                            note: codonNoteMap[codon]
+                        }));
+
+                        const noteOrder = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+
+                        conversionData.sort((a, b) => {
+                            if (a.note === null && b.note !== null) return 1;
+                            if (a.note !== null && b.note === null) return -1;
+                            if (a.note === null && b.note === null) return 0;
+
+                            const pitchA = a.note.slice(0, -1);
+                            const octaveA = parseInt(a.note.slice(-1));
+                            const pitchB = b.note.slice(0, -1);
+                            const octaveB = parseInt(b.note.slice(-1));
+
+                            const indexA = noteOrder.indexOf(pitchA);
+                            const indexB = noteOrder.indexOf(pitchB);
+
+                            if (octaveA !== octaveB) return octaveA - octaveB;
+                            if (indexA !== indexB) return indexA - indexB;
+                            return a.codon.localeCompare(b.codon);
+                        });
+
+
+                        for (const item of conversionData) {
+                            checkPageEnd(6);
+                            if (y === pageMargin) { 
+                                drawTableHeader();
+                            }
+                            
+                            doc.setFontSize(9);
+                            doc.setFont('courier', 'normal');
+
+                            const amino = item.amino;
+                            const note = item.note || 'Rest';
+                            
+                            x = pageMargin;
+                            doc.text(item.codon, x, y);
+                            x += colWidths[0];
+                            doc.text(amino, x, y);
+                            x += colWidths[1];
+                            doc.text(note, x, y);
+                            y += 6;
+                        }
+                        return y;
+                    };
+
+                    currentY = addTable(doc, currentY);
+                    currentY += 10;
+
+                    const addWrappedText = (title, text) => {
+                        checkPageEnd(20);
+                        doc.setFontSize(14);
+                        doc.setFont('helvetica', 'bold');
+                        doc.text(title, pageMargin, currentY);
+                        currentY += 8;
+                        
+                        doc.setFontSize(8);
+                        doc.setFont('courier', 'normal');
+                        const lines = doc.splitTextToSize(text, usableWidth);
+                        checkPageEnd(lines.length * 4);
+                        doc.text(lines, pageMargin, currentY);
+                        currentY += (lines.length * 4) + 10;
+                    };
+
+                    addWrappedText('Original DNA Sequence', geneSequenceInput.value);
+                    addWrappedText('Resulting Amino Acid Sequence', aminoAcidSequence.join(' '));
+                    addWrappedText('Resulting Musical Notes', noteSequence.join(', '));
+                    
+                    // Add creator support footer
+                    checkPageEnd(30);
+                    currentY += 10;
+                    doc.setLineWidth(0.5);
+                    doc.line(pageMargin, currentY, pageWidth - pageMargin, currentY);
+                    currentY += 10;
+
+                    doc.setFontSize(10);
+                    doc.setFont('helvetica', 'italic');
+                    doc.text('Please support the creator:', pageWidth / 2, currentY, { align: 'center' });
+                    currentY += 7;
+                    doc.setFont('helvetica', 'bold');
+                    doc.text('Follow on social media: @cdcruzher', pageWidth / 2, currentY, { align: 'center' });
+                    
+                    doc.save('gene-to-music-report.pdf');
+                    statusDiv.textContent = 'PDF report downloaded.';
+
+                } catch (error) {
+                    statusDiv.textContent = 'Error generating PDF.';
+                    console.error("PDF generation failed:", error);
+                }
+            });
         });
     </script>
 </body>

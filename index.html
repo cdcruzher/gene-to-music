@@ -58,10 +58,24 @@
 <body class="bg-slate-100 text-slate-800 flex items-center justify-center min-h-screen p-4">
 
     <div class="bg-white w-full max-w-3xl mx-auto p-6 sm:p-8 rounded-2xl shadow-lg space-y-6">
-        <!-- Header Section -->
-        <div class="text-center">
+        <!-- Header Section (ACTUALIZADO CON LOGO Y CREDITOS) -->
+        <div class="flex flex-col items-center text-center">
+            <div class="h-16 w-16 rounded-2xl overflow-hidden shadow-lg border border-slate-100 bg-white mb-4">
+                 <img 
+                    src="logo.jpg" 
+                    alt="Logo"
+                    class="h-full w-full object-cover"
+                    onerror="this.src='https://ui-avatars.com/api/?name=Gene+Music&background=4f46e5&color=fff&size=128'"
+                 />
+            </div>
+            
             <h1 class="text-3xl sm:text-4xl font-bold text-slate-900">Gene to Music</h1>
             <p class="text-slate-500 mt-2">Transform DNA codons into musical pieces with rhythm.</p>
+            
+            <!-- CRÉDITOS Y ENLACE -->
+            <p class="text-xs text-slate-400 mt-3 font-mono border-t border-slate-100 pt-3 w-full max-w-xs mx-auto">
+                Created by Carlos David <a href="https://cdcruzher.com" target="_blank" rel="noopener noreferrer" class="text-indigo-500 hover:text-indigo-600 font-semibold transition-colors">@cdcruzher</a>
+            </p>
         </div>
         
         <!-- User Name Input -->
@@ -290,7 +304,7 @@
                 },
                 'bossa_nova': {
                     rhythm: ['8n', '16n', null, '16n', '8n'], 
-                     drumPattern: [
+                      drumPattern: [
                         { time: '0:0', note: 'C1' }, { time: '0:0:3', note: 'E2' },
                         { time: '0:1', note: 'C2' }, { time: '0:1:2', note: 'E2' },
                         { time: '0:2', note: 'C1' }, { time: '0:2:2', note: 'E2' },
@@ -326,13 +340,13 @@
                     }).connect(drumVolume);
                 }
                 if (!snare) {
-                     snare = new Tone.NoiseSynth({
+                      snare = new Tone.NoiseSynth({
                         noise: { type: 'white' },
                         envelope: { attack: 0.005, decay: 0.1, sustain: 0 }
                     }).connect(drumVolume);
                 }
                  if (!hihat) {
-                     hihat = new Tone.NoiseSynth({
+                      hihat = new Tone.NoiseSynth({
                         noise: { type: 'brown' },
                         envelope: { attack: 0.001, decay: 0.05, sustain: 0 }
                     }).connect(drumVolume);
@@ -399,8 +413,8 @@
                 }
 
                 if (noteSequence.length === 0) {
-                     notesOutput.innerHTML = `<span class="text-slate-400">No notes fit the scale.</span>`;
-                     aminoAcidOutput.innerHTML = `<span class="text-slate-400">No items fit the scale.</span>`;
+                      notesOutput.innerHTML = `<span class="text-slate-400">No notes fit the scale.</span>`;
+                      aminoAcidOutput.innerHTML = `<span class="text-slate-400">No items fit the scale.</span>`;
                 } else {
                     displayNotes(noteSequence);
                     displayAminoAcids(aminoAcidSequence);
@@ -505,7 +519,7 @@
 
                 const totalDuration = noteEvents.length > 0 ? noteEvents[noteEvents.length - 1].time + Tone.Time(noteEvents[noteEvents.length - 1].duration).toSeconds() : 0;
                 Tone.Transport.scheduleOnce((time) => {
-                     Tone.Draw.schedule(() => {
+                      Tone.Draw.schedule(() => {
                         statusDiv.textContent = "Playback finished.";
                         stopPlayback();
                     }, time);
@@ -887,4 +901,3 @@
     </script>
 </body>
 </html>
-
